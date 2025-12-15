@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eureka Quiz Platform - Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        
+        .button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+        
+        .button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .button:active {
+            transform: translateY(0);
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-top: 5px;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        #messages {
+            max-height: 300px;
+            overflow-y: auto;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+            margin-top: 15px;
+        }
+        
+        .message {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            background: #f8f9fa;
+        }
+        
+        .message.system {
+            background: #e7f3ff;
+            border-left: 3px solid #2196F3;
+        }
+        
+        .message.received {
+            background: #f0f0f0;
+            border-left: 3px solid #4CAF50;
+        }
+        
+        .checkmark {
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .cross {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        .test-results {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .test-item {
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+            text-align: center;
+        }
+        
+        .test-item.pass {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+        
+        .test-item.fail {
+            border-color: #dc3545;
+            background: #f8d7da;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Eureka Quiz Platform</h1>
+        <p class="subtitle">Real-time Quiz Battle Platform - Demo Testing</p>
+        
+        <!-- API Testing Section -->
+        <div class="section">
+            <h2>1. REST API Testing</h2>
+            <div class="test-results" id="apiTests">
+                <div class="test-item" id="apiHelloTest">
+                    <div>Hello Endpoint</div>
+                    <div id="apiHelloStatus">⏳ Testing...</div>
+                </div>
+                <div class="test-item" id="apiCheckTest">
+                    <div>Check Endpoint</div>
+                    <div id="apiCheckStatus">⏳ Testing...</div>
+                </div>
+            </div>
+            <button class="button" onclick="testAPI()">Test REST API</button>
+            <div id="apiStatus" class="status" style="display: none;"></div>
+            <div id="apiResponse"></div>
+        </div>
+        
+        <!-- WebSocket Testing Section -->
+        <div class="section">
+            <h2>2. WebSocket Testing</h2>
+            <div class="input-group">
+                <label>Your Name:</label>
+                <input type="text" id="nameInput" placeholder="Enter your name" value="Demo User">
+            </div>
+            <div class="input-group">
+                <label>Test Message:</label>
+                <input type="text" id="messageInput" placeholder="Enter test message" value="Hello from Eureka!">
+            </div>
+            <button class="button" onclick="connectWebSocket()">Connect WebSocket</button>
+            <button class="button" onclick="disconnectWebSocket()">Disconnect</button>
+            <button class="button" onclick="sendMessage()">Send Test Message</button>
+            <div id="wsStatus" class="status info" style="display: none;">Not connected</div>
+            <div id="messages"></div>
+        </div>
+        
+        <!-- Summary Section -->
+        <div class="section">
+            <h2>3. System Status</h2>
+            <div id="systemStatus">
+                <p>Server Port: <strong>8081</strong></p>
+                <p>API Base URL: <strong>http://localhost:8081/api/demo</strong></p>
+                <p>WebSocket Endpoint: <strong>http://localhost:8081/ws</strong></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <script>
+        let stompClient = null;
+        let connected = false;
+
+        // Test REST API
+        async function testAPI() {
+            const apiHelloStatus = document.getElementById('apiHelloStatus');
+            const apiCheckStatus = document.getElementById('apiCheckStatus');
+            const apiStatus = document.getElementById('apiStatus');
+            const apiResponse = document.getElementById('apiResponse');
+            
+            try {
+                // Test /api/demo/hello
+                apiHelloStatus.textContent = '⏳ Testing...';
+                const helloResponse = await fetch('http://localhost:8081/api/demo/hello');
+                const helloData = await helloResponse.json();
+                
+                if (helloResponse.ok) {
+                    document.getElementById('apiHelloTest').classList.add('pass');
+                    apiHelloStatus.innerHTML = '<span class="checkmark">✅ Pass</span>';
+                } else {
+                    throw new Error('Failed');
+                }
+                
+                // Test /api/demo/check
+                apiCheckStatus.textContent = '⏳ Testing...';
+                const checkResponse = await fetch('http://localhost:8081/api/demo/check');
+                const checkData = await checkResponse.json();
+                
+                if (checkResponse.ok) {
+                    document.getElementById('apiCheckTest').classList.add('pass');
+                    apiCheckStatus.innerHTML = '<span class="checkmark">✅ Pass</span>';
+                } else {
+                    throw new Error('Failed');
+                }
+                
+                apiStatus.style.display = 'block';
+                apiStatus.className = 'status success';
+                apiStatus.textContent = '✅ All API tests passed!';
+                
+                apiResponse.innerHTML = `
+                    <h3>API Responses:</h3>
+                    <pre>${JSON.stringify({hello: helloData, check: checkData}, null, 2)}</pre>
+                `;
+            } catch (error) {
+                document.getElementById('apiHelloTest').classList.add('fail');
+                document.getElementById('apiCheckTest').classList.add('fail');
+                apiHelloStatus.innerHTML = '<span class="cross">❌ Fail</span>';
+                apiCheckStatus.innerHTML = '<span class="cross">❌ Fail</span>';
+                apiStatus.style.display = 'block';
+                apiStatus.className = 'status error';
+                apiStatus.textContent = '❌ API tests failed. Make sure the server is running on port 8081!';
+                apiResponse.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+
+        // Connect WebSocket
+        function connectWebSocket() {
+            const socket = new SockJS('http://localhost:8081/ws');
+            stompClient = Stomp.over(socket);
+            
+            stompClient.connect({}, function (frame) {
+                connected = true;
+                const wsStatus = document.getElementById('wsStatus');
+                wsStatus.style.display = 'block';
+                wsStatus.className = 'status success';
+                wsStatus.textContent = '✅ Connected to WebSocket!';
+                
+                addMessage('system', 'Connected to WebSocket server');
+                
+                // Subscribe to greetings topic
+                stompClient.subscribe('/topic/greetings', function (message) {
+                    const data = JSON.parse(message.body);
+                    addMessage('received', `Server: ${data.content} (${data.timestamp})`);
+                });
+                
+                // Subscribe to test topic
+                stompClient.subscribe('/topic/test', function (message) {
+                    const data = JSON.parse(message.body);
+                    addMessage('received', `Test Response: ${data.message} (${data.timestamp})`);
+                });
+            }, function (error) {
+                connected = false;
+                const wsStatus = document.getElementById('wsStatus');
+                wsStatus.style.display = 'block';
+                wsStatus.className = 'status error';
+                wsStatus.textContent = '❌ Failed to connect to WebSocket';
+                addMessage('system', 'Connection failed: ' + error);
+            });
+        }
+
+        // Disconnect WebSocket
+        function disconnectWebSocket() {
+            if (stompClient !== null) {
+                stompClient.disconnect();
+                connected = false;
+                const wsStatus = document.getElementById('wsStatus');
+                wsStatus.style.display = 'block';
+                wsStatus.className = 'status info';
+                wsStatus.textContent = 'Disconnected from WebSocket';
+                addMessage('system', 'Disconnected from WebSocket');
+            }
+        }
+
+        // Send message via WebSocket
+        function sendMessage() {
+            if (stompClient !== null && connected) {
+                const name = document.getElementById('nameInput').value;
+                const messageText = document.getElementById('messageInput').value;
+                
+                // Send to /app/hello
+                stompClient.send("/app/hello", {}, JSON.stringify({'name': name}));
+                addMessage('system', `Sent: Hello message with name "${name}"`);
+                
+                // Send to /app/test
+                stompClient.send("/app/test", {}, JSON.stringify({'text': messageText}));
+                addMessage('system', `Sent: Test message "${messageText}"`);
+            } else {
+                alert('Please connect to WebSocket first!');
+            }
+        }
+
+        // Add message to message area
+        function addMessage(type, content) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = content;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Auto-test API on page load
+        window.onload = function() {
+            testAPI();
+        };
+    </script>
+</body>
+</html>
+
