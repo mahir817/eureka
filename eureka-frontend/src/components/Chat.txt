@@ -1,0 +1,56 @@
+import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { connect, sendToAll, sendToSpecific } from '../js/webSocket';
+
+const Chat = (props) => {
+  const { state } = useLocation();
+  const navigate = useNavigate();
+  const userName = state?.userName;
+   
+  if(userName === null) navigate('/login', {replace : true});
+
+  const [message, setMessage] = useState('');
+  const [username, setUsername] = useState('');
+  const [Tousername, setToUsername] = useState('');
+  const [messages, setMessages] = useState([]);
+
+  function handleConnect() {
+    connect(username, onMessageReceived);
+  }
+
+  function onMessageReceived(message) {
+    console.log(message);
+    setMessages(messages => [...messages, message['key1']]);
+  }
+
+  function handleSendToAll() {
+    sendToAll(message);
+    setMessage('');
+  }
+
+  function handleSendToSpecific() {
+    sendToSpecific(message, Tousername);
+    setMessage('');
+  }
+
+  return (
+    <div>
+      <input type="text" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
+      <button onClick={handleConnect}>Connect</button>
+
+      <div>
+        <textarea rows="10" value={messages.join('\n')} readOnly></textarea>
+      </div>
+
+      <div>
+        <input type="text" placeholder="Message" value={message} onChange={e => setMessage(e.target.value)} />
+        <button onClick={handleSendToAll}>Send to all</button>
+        <input type="text" placeholder="To user" value={Tousername} onChange={e => setToUsername(e.target.value)} />
+        <button onClick={handleSendToSpecific}>Send to specific</button>
+      </div>
+    </div>
+  );
+}
+
+export default Chat;
+
