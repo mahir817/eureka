@@ -18,10 +18,9 @@ public class ChatController {
     private org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
 
     @MessageMapping("/chat/{buzzerId}")
-    @SendTo("/all/chat/{buzzerId}")
-    public Map<String, String> processMessage(@DestinationVariable String buzzerId,
+    public void processMessage(@DestinationVariable String buzzerId,
             @Payload Map<String, String> message) {
-        return message;
+        messagingTemplate.convertAndSend("/all/chat/" + buzzerId, message);
     }
 
     @MessageMapping("/chat.private")
