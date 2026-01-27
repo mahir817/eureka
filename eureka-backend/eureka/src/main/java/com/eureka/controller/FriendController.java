@@ -37,22 +37,50 @@ public class FriendController {
         User user2 = userRepository.findByUsername(friendUsername)
                 .orElseThrow(() -> new IllegalArgumentException("Friend not found"));
 
-        // Check if already friends
+        // Check if already friends or request pending
         List<Friendship> existing = friendshipRepository.findByUser1OrUser2(user1, user1);
         for (Friendship f : existing) {
             if ((f.getUser1().equals(user1) && f.getUser2().equals(user2)) ||
                     (f.getUser1().equals(user2) && f.getUser2().equals(user1))) {
-                return ResponseEntity.badRequest().body("Already friends");
+                return ResponseEntity.badRequest().body("Friendship or request already exists");
             }
         }
 
         Friendship friendship = new Friendship();
         friendship.setUser1(user1);
         friendship.setUser2(user2);
-        friendship.setStatus("ACCEPTED"); // Auto-accept for now as per requirements
+        friendship.setStatus("PENDING");
         friendshipRepository.save(friendship);
 
-        return ResponseEntity.ok("Friend added successfully");
+        return ResponseEntity.ok("Friend request sent");
+    }
+
+    @PostMapping("/accept/{username}/{friendUsername}")
+    public ResponseEntity<String> acceptFriendRequest(@PathVariable String username,
+            @PathVariable String friendUsername) {
+        User user1 = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        User user2 = userRepository.findByUsername(friendUsername)
+                .orElseThrow(() -> new IllegalArgumentException("Friend not found"));
+
+        // Find the pending request where user1 is the RECEIVER (so user2 sent it?)
+        // Wait, the Friendship stores user1 and user2.
+        // We need to find the specific friendship.
+        // Let's iterate.
+        List<Friendship> existing = friendshipRepository.findByUser1OrUser2(user1, user1);
+        for (Friendship f : existing) {
+            // Check if f corresponds to user1 and user2
+            boolean match = (f.getUser1().equals(user1) && f.getUser2().equals(user2))
+                    || (f.getUser1().equals(user2) && f.getUser2().equals(user1));
+            if (match) {
+                if (f.getStatus().equals("ACCEPTED"))
+                    return ResponseEntity.badRequest().body("Already accepted");
+                f.setStatus("ACCEPTED");
+                friendshipRepository.save(f);
+                return ResponseEntity.ok("Friend request accepted");
+            }
+        }
+        return ResponseEntity.badRequest().body("Request not found");
     }
 
     @GetMapping("/{username}")
@@ -64,11 +92,47 @@ public class FriendController {
         List<User> friends = new ArrayList<>();
 
         for (Friendship f : friendships) {
-            if (f.getUser1().equals(user))
-                friends.add(f.getUser2());
-            else
-                friends.add(f.getUser1());
+            if (f.getStatus().equals("ACCEPTED")) {
+                if (f.getUser1().equals(user))
+                    friends.add(f.getUser2());
+                else
+                    friends.add(f.getUser1());
+            }
         }
+
+        return friends;
+    }
+
+    @GetMapping("/requests/{username}")
+    public List<User> getFriendRequests(@PathVariable String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        List<Friendship> friendships = friendshipRepository.findByUser1OrUser2(user, user);
+        List<User> requests = new ArrayList<>();
+
+        for (Friendship f : friendships) {
+            // If I am the receiver (user2 usually in my add logic above? Wait.)
+            // addFriend(sender, receiver) -> user1=sender, user2=receiver
+            // unique check logic above: user1=sender, user2=receiver
+
+            // So if I am user2 and status is PENDING, it is a request for me.
+            if (f.getStatus().equals("PENDING") && f.getUser2().equals(user)) {
+                requests.add(f.getUser1());
+            }
+        }
+        return requests;
+    }
+
+    @GetMapping("/leaderboard/{username}")
+    public List<User> getFriendsLeaderboard(@PathVariable String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        List<User> friends = getFriends(username);
+        friends.add(user); // Add self
+
+        friends.sort((u1, u2) -> Integer.compare(u2.getRatings(), u1.getRatings()));
 
         return friends;
     }

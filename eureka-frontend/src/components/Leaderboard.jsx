@@ -8,27 +8,44 @@ const Leaderboard = () => {
     const { state } = useLocation();
     const userName = state?.userName;
     const [users, setUsers] = useState([]);
+    const [view, setView] = useState('global'); // 'global' or 'friends'
 
     useEffect(() => {
         if (!userName) navigate("/login", { replace: true });
-
-        const fetchLeaderboard = async () => {
-            try {
-                const response = await axios.get("http://localhost:8081/users/leaderboard");
-                setUsers(response.data);
-            } catch (error) {
-                console.error("Error fetching leaderboard", error);
-            }
-        };
-
+        setUsers([]); // Clear previous data
         fetchLeaderboard();
-    }, []);
+    }, [view]);
+
+    const fetchLeaderboard = async () => {
+        try {
+            let url = "http://localhost:8081/users/leaderboard";
+            if (view === 'friends') {
+                url = `http://localhost:8081/friends/leaderboard/${userName}`;
+            }
+            const response = await axios.get(url);
+            setUsers(response.data);
+        } catch (error) {
+            console.error("Error fetching leaderboard", error);
+        }
+    };
 
     return (
         <>
             <Header userName={userName} />
             <div className="container mt-5">
-                <h2 className="text-center mb-4">Universal Leaderboard</h2>
+                <h2 className="text-center mb-4">Leaderboard</h2>
+
+                <div className="d-flex justify-content-center mb-4">
+                    <div className="btn-group" role="group">
+                        <button type="button" className={`btn ${view === 'global' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setView('global')}>
+                            Global Ranking
+                        </button>
+                        <button type="button" className={`btn ${view === 'friends' ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setView('friends')}>
+                            Friends Ranking
+                        </button>
+                    </div>
+                </div>
+
                 <div className="table-responsive">
                     <table className="table table-striped table-hover shadow-sm">
                         <thead className="table-dark">
@@ -52,6 +69,11 @@ const Leaderboard = () => {
                                     <td>{user.institute}</td>
                                 </tr>
                             ))}
+                            {users.length === 0 && (
+                                <tr>
+                                    <td colSpan="6" className="text-center">No data available</td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>

@@ -1,23 +1,34 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "./Header";
 import axios from "axios";
-import WebSocketComponent from "./WebSocketComponent";
+
 
 const Buddies = () => {
     const navigate = useNavigate();
     const { state } = useLocation();
     const userName = state?.userName;
     const [friends, setFriends] = useState([]);
+    const [requests, setRequests] = useState([]);
     const [newFriendName, setNewFriendName] = useState("");
     const [notifications, setNotifications] = useState([]);
 
-    // Buzzer creation state
+    // WebSocket Client
+    const stompClientRef = useRef(null);
+
+    // Chat State
+    const [showChat, setShowChat] = useState(false);
+    const [chatFriend, setChatFriend] = useState(null);
+    const [messages, setMessages] = useState([]);
+    const [newMessage, setNewMessage] = useState("");
+    const chatSubscriptionRef = useRef(null);
+
+    // Battle State
     const [showCreate, setShowCreate] = useState(false);
     const [selectedFriend, setSelectedFriend] = useState(null);
-    const [category, setCategory] = useState("Mixed"); // Default Mixed
+    const [category, setCategory] = useState("Mixed");
     const [streamData, setStreamData] = useState({});
-    const [selectedStream, setSelectedStream] = useState("Computer Science"); // Default to first?
+    const [selectedStream, setSelectedStream] = useState("Computer Science");
     const [difficulty, setDifficulty] = useState("Easy");
     const [count, setCount] = useState(10);
 
@@ -25,15 +36,15 @@ const Buddies = () => {
     useEffect(() => {
         if (!userName) navigate("/login", { replace: true });
         fetchFriends();
+        fetchRequests();
 
         const fetchStreams = async () => {
-            const response = await axios.get(
-                `http://localhost:8081/questions/streams`
-            );
-            const data = await response["data"];
-            setStreamData(data);
-            // set default stream
-            if (Object.keys(data).length > 0) setSelectedStream(Object.keys(data)[0]);
+            try {
+                const response = await axios.get(`http://localhost:8081/questions/streams`);
+                const data = response.data;
+                setStreamData(data);
+                if (Object.keys(data).length > 0) setSelectedStream(Object.keys(data)[0]);
+            } catch (e) { console.error(e); }
         };
         fetchStreams();
     }, []);
@@ -42,25 +53,38 @@ const Buddies = () => {
         try {
             const res = await axios.get(`http://localhost:8081/friends/${userName}`);
             setFriends(res.data);
-        } catch (e) {
-            console.error(e);
-        }
+        } catch (e) { console.error(e); }
+    };
+
+    const fetchRequests = async () => {
+        try {
+            const res = await axios.get(`http://localhost:8081/friends/requests/${userName}`);
+            setRequests(res.data);
+        } catch (e) { console.error(e); }
     };
 
     const addFriend = async () => {
         if (!newFriendName) return;
         try {
             await axios.post(`http://localhost:8081/friends/add/${userName}/${newFriendName}`);
-            alert("Friend added!");
+            alert("Friend request sent!");
             setNewFriendName("");
-            fetchFriends();
+            fetchFriends(); // Refresh friends in case auto-accept (backend default is PENDING now though)
         } catch (e) {
             alert(e.response?.data || "Error adding friend");
         }
     };
 
+    const acceptRequest = async (sender) => {
+        try {
+            await axios.post(`http://localhost:8081/friends/accept/${userName}/${sender}`);
+            fetchRequests();
+            fetchFriends();
+        } catch (e) { console.error(e); }
+    }
+
     const onMessageReceived = (message) => {
-        // reuse notification logic or simplify
+        // Invitations
         const newNotif = {
             id: Date.now(),
             type: 'INVITE',
@@ -75,41 +99,66 @@ const Buddies = () => {
         navigate("/waiting", { replace: true, state: message });
     };
 
+    // WebSocket Client Handling
+    const onClientAvailable = (client) => {
+        stompClientRef.current = client;
+    };
+
+    // Chat Logic
+    const openChat = (friend) => {
+        setChatFriend(friend);
+        setMessages([]); // Clear previous messages or fetch history if available
+        setShowChat(true);
+
+        if (stompClientRef.current) {
+            const roomId = [userName, friend.username].sort().join('_');
+            // Unsubscribe existing if any (edge case)
+            if (chatSubscriptionRef.current) chatSubscriptionRef.current.unsubscribe();
+
+            chatSubscriptionRef.current = stompClientRef.current.subscribe(`/all/chat/${roomId}`, (msg) => {
+                const body = JSON.parse(msg.body);
+                setMessages(prev => [...prev, body]);
+            });
+        }
+    };
+
+    const closeChat = () => {
+        setShowChat(false);
+        setChatFriend(null);
+        if (chatSubscriptionRef.current) {
+            chatSubscriptionRef.current.unsubscribe();
+            chatSubscriptionRef.current = null;
+        }
+    };
+
+    const sendChatMessage = () => {
+        if (!newMessage.trim() || !stompClientRef.current || !chatFriend) return;
+        const roomId = [userName, chatFriend.username].sort().join('_');
+        const payload = {
+            sender: userName,
+            text: newMessage,
+            timestamp: new Date().toLocaleTimeString()
+        };
+        stompClientRef.current.send(`/app/chat/${roomId}`, {}, JSON.stringify(payload));
+        setNewMessage("");
+    };
+
+    // Battle Logic
     const initiateBattle = (friend) => {
         setSelectedFriend(friend);
         setShowCreate(true);
     };
 
     const sendInvite = async () => {
-        // Create buzzer first
-        // Fix Category Logic here: pass empty string for Mixed if specific logic needed, or just %25
         let catToSend = category;
         if (category === "Mixed") catToSend = "%25";
 
         const response = await axios.get(`http://localhost:8081/buzzers/create/${userName}?categoryLike=${catToSend}&difficulty=${difficulty}&count=${count}&stream=${selectedStream}`);
         const buzzer = response.data;
 
-        // Invite friend
         await axios.post(`http://localhost:8081/friends/invite/${userName}/${selectedFriend.username}/${buzzer.id}`);
 
         setShowCreate(false);
-        // We should probably auto-join or wait?
-        // Reuse join logic? The creator joins automatically as player1?
-        // Wait, regular flow: create -> return buzzer. Buzzer has state ACTIVE? No wait..
-        // Controller createBuzzer: sets state ACTIVE.
-
-        // Wait, for standard game, after create, user waits.
-        // onMessageReceived (msg["player1"] == userName) handles the "Waiting" message.
-        // We can simulate that or just let WebSocket handle it.
-        // The backend `createBuzzer` does NOT send a websocket message.
-        // The `shareOnline` sends message to ALL.
-        // `invite` sends message to FRIEND.
-
-        // We need to navigate user to Waiting page?
-        // usually Home.jsx doesn't navigate on create. It shows "Wait for opponent".
-        // But here we want a clearer flow.
-
-        // Let's manually trigger the "Waiting" notification or just alert user.
         const newNotif = {
             id: Date.now(),
             type: 'WAITING',
@@ -121,14 +170,14 @@ const Buddies = () => {
 
     return (
         <>
-            {userName && (
-                <WebSocketComponent
-                    userName={userName}
-                    onMessageReceived={onMessageReceived}
-                    onGameJoined={onGameJoined}
-                />
-            )}
-            <Header userName={userName} notifications={notifications} setNotifications={setNotifications} />
+            <Header
+                userName={userName}
+                notifications={notifications}
+                setNotifications={setNotifications}
+                onMessageReceived={onMessageReceived} // Header will call this
+                onGameJoined={onGameJoined} // Header will call this
+                onClientAvailable={onClientAvailable} // Header will pass client back
+            />
 
             <div className="container mt-5">
                 <h2>Buddies</h2>
@@ -143,25 +192,59 @@ const Buddies = () => {
                 </div>
 
                 <div className="row">
-                    {friends.map(friend => (
-                        <div className="col-md-4 mb-3" key={friend.username}>
-                            <div className="card shadow-sm">
-                                <div className="card-body text-center">
-                                    <h5>{friend.name}</h5>
-                                    <p className="text-muted">@{friend.username}</p>
-                                    <p>{friend.profession} at {friend.institute}</p>
-                                    <p>Rating: {friend.ratings}</p>
-                                    <button className="btn btn-danger w-100" onClick={() => initiateBattle(friend)}>
-                                        Battle <i className="fa fa-skull"></i>
-                                    </button>
+                    {/* Friends Column */}
+                    <div className="col-md-8">
+                        <h4 className="border-bottom pb-2">My Friends</h4>
+                        <div className="row mt-3">
+                            {friends.map(friend => (
+                                <div className="col-md-6 mb-3" key={friend.username}>
+                                    <div className="card shadow-sm h-100">
+                                        <div className="card-body">
+                                            <div className="d-flex justify-content-between align-items-center mb-2">
+                                                <h5 className="mb-0">{friend.name}</h5>
+                                                <span className="badge bg-secondary">{friend.ratings}</span>
+                                            </div>
+                                            <p className="text-muted small mb-1">@{friend.username}</p>
+                                            <p className="small">{friend.profession}</p>
+
+                                            <div className="d-grid gap-2">
+                                                <button className="btn btn-sm btn-danger" onClick={() => initiateBattle(friend)}>
+                                                    Battle <i className="fa fa-skull"></i>
+                                                </button>
+                                                <button className="btn btn-sm btn-info text-white" onClick={() => openChat(friend)}>
+                                                    Message <i className="fa fa-comment"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
+                            ))}
+                            {friends.length === 0 && <p className="text-muted">No friends yet.</p>}
                         </div>
-                    ))}
-                    {friends.length === 0 && <p>No friends yet. Add some!</p>}
+                    </div>
+
+                    {/* Requests Column */}
+                    <div className="col-md-4">
+                        <h4 className="border-bottom pb-2">Requests</h4>
+                        <div className="mt-3">
+                            {requests.map(req => (
+                                <div className="card shadow-sm mb-3" key={req.username}>
+                                    <div className="card-body p-3">
+                                        <h6 className="mb-1">{req.name}</h6>
+                                        <p className="text-muted small mb-2">@{req.username}</p>
+                                        <button className="btn btn-sm btn-success w-100" onClick={() => acceptRequest(req.username)}>
+                                            Accept Request
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                            {requests.length === 0 && <p className="text-muted">No pending requests.</p>}
+                        </div>
+                    </div>
                 </div>
             </div>
 
+            {/* Battle Modal */}
             {showCreate && (
                 <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                     <div className="modal-dialog">
@@ -200,6 +283,44 @@ const Buddies = () => {
                             <div className="modal-footer">
                                 <button className="btn btn-secondary" onClick={() => setShowCreate(false)}>Cancel</button>
                                 <button className="btn btn-primary" onClick={sendInvite}>Send Invite</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Chat Modal */}
+            {showChat && (
+                <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                    <div className="modal-dialog modal-dialog-scrollable">
+                        <div className="modal-content">
+                            <div className="modal-header bg-primary text-white">
+                                <h5 className="modal-title">Chat with {chatFriend?.name}</h5>
+                                <button className="btn-close btn-close-white" onClick={closeChat}></button>
+                            </div>
+                            <div className="modal-body" style={{ height: '300px', overflowY: 'auto' }}>
+                                {messages.map((msg, idx) => (
+                                    <div key={idx} className={`d-flex mb-2 ${msg.sender === userName ? 'justify-content-end' : 'justify-content-start'}`}>
+                                        <div className={`p-2 rounded ${msg.sender === userName ? 'bg-primary text-white' : 'bg-light border'}`} style={{ maxWidth: '75%' }}>
+                                            <small className="d-block mb-1" style={{ fontSize: '0.7em', opacity: 0.8 }}>{msg.sender}</small>
+                                            {msg.text}
+                                        </div>
+                                    </div>
+                                ))}
+                                {messages.length === 0 && <p className="text-center text-muted mt-5">Start the conversation!</p>}
+                            </div>
+                            <div className="modal-footer">
+                                <div className="input-group">
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Type a message..."
+                                        value={newMessage}
+                                        onChange={e => setNewMessage(e.target.value)}
+                                        onKeyPress={e => e.key === 'Enter' && sendChatMessage()}
+                                    />
+                                    <button className="btn btn-primary" onClick={sendChatMessage}>Send</button>
+                                </div>
                             </div>
                         </div>
                     </div>

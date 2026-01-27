@@ -1,5 +1,7 @@
 package com.eureka.controller;
 
+import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -16,10 +18,17 @@ public class ChatController {
     @SendTo("/all/chat/{buzzerId}")
     public Map<String, String> processMessage(@DestinationVariable String buzzerId,
             @Payload Map<String, String> message) {
-        // Here we could simulate some 'threading' logic if strictly needed,
-        // e.g., logging thread name:
-        // System.out.println(Thread.currentThread().getName());
-        // For now, simple broadcast
         return message;
+    }
+
+    @Autowired
+    private org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
+
+    @MessageMapping("/chat.private")
+    public void sendPrivateMessage(@Payload Map<String, String> message) {
+        String toUser = message.get("to");
+        if (toUser != null && !toUser.isEmpty()) {
+            messagingTemplate.convertAndSend("/topic/private/" + toUser, message);
+        }
     }
 }

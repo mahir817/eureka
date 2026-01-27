@@ -88,15 +88,13 @@ const Home = () => {
 
   return (
     <>
-      {userName && (
-        <WebSocketComponent
-          userName={userName}
-          onMessageReceived={onMessageReceived}
-          onGameJoined={onGameJoined}
-        />
-      )}
-
-      <Header userName={userName} notifications={notifications} setNotifications={setNotifications} />
+      <Header
+        userName={userName}
+        notifications={notifications}
+        setNotifications={setNotifications}
+        onMessageReceived={onMessageReceived}
+        onGameJoined={onGameJoined}
+      />
 
       {/* user Details */}
       <div
