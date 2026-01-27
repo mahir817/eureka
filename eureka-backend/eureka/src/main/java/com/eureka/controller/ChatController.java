@@ -14,15 +14,15 @@ import java.util.Map;
 @Controller
 public class ChatController {
 
+    @Autowired
+    private org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
+
     @MessageMapping("/chat/{buzzerId}")
     @SendTo("/all/chat/{buzzerId}")
     public Map<String, String> processMessage(@DestinationVariable String buzzerId,
             @Payload Map<String, String> message) {
         return message;
     }
-
-    @Autowired
-    private org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate;
 
     @MessageMapping("/chat.private")
     public void sendPrivateMessage(@Payload Map<String, String> message) {

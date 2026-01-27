@@ -7,34 +7,48 @@ const Practice = () => {
     const { state } = useLocation();
     const userName = state?.userName;
 
-    // Default config if not coming from home
+    const [streamData, setStreamData] = useState({});
+    const [selectedStream, setSelectedStream] = useState("");
+    const [selectedCategory, setSelectedCategory] = useState("%");
+    const [selectedDifficulty, setSelectedDifficulty] = useState("Easy");
+    const [selectedCount, setSelectedCount] = useState(10);
+    const [setupMode, setSetupMode] = useState(true);
+
     const [questions, setQuestions] = useState([]);
     const [currentQIndex, setCurrentQIndex] = useState(0);
     const [score, setScore] = useState(0);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [finished, setFinished] = useState(false);
     const [selectedOption, setSelectedOption] = useState(null);
     const [feedback, setFeedback] = useState(null);
 
     useEffect(() => {
-        fetchPracticeQuestions();
+        if (!userName) navigate("/login", { replace: true });
+        fetchStreams();
     }, []);
 
-    const fetchPracticeQuestions = async () => {
+    const fetchStreams = async () => {
         try {
-            // Fetch 10 random questions (using the existing endpoint logic, might need backend tweak to get random)
-            // For now, we fetch all and shuffle, or fetch specific stream
-            // Using the 'individual/questions' endpoint: count=10, stream=Computer Science, difficulty=Easy, categoryLike=%
+            const response = await axios.get(`http://localhost:8081/questions/streams`);
+            const data = response.data;
+            setStreamData(data);
+            if (Object.keys(data).length > 0) setSelectedStream(Object.keys(data)[0]);
+        } catch (e) { console.error(e); }
+    };
+
+    const startPractice = async () => {
+        setLoading(true);
+        setSetupMode(false);
+        try {
             const response = await axios.get('http://localhost:8081/questions/individual/questions', {
                 params: {
-                    stream: 'Computer Science',
-                    categoryLike: '%',
-                    difficulty: 'Easy',
-                    count: 10
+                    stream: selectedStream,
+                    categoryLike: selectedCategory === "Mixed" ? "%" : selectedCategory,
+                    difficulty: selectedDifficulty,
+                    count: selectedCount
                 }
             });
 
-            // Randomize options for each question
             const shuffled = response.data.map(q => ({
                 ...q,
                 options: q.options.sort(() => Math.random() - 0.5)
@@ -72,6 +86,48 @@ const Practice = () => {
         }, 1500);
     };
 
+    if (setupMode) {
+        return (
+            <div className="container mt-5">
+                <div className="card shadow col-md-8 mx-auto">
+                    <div className="card-header bg-primary text-white">
+                        <h3>Practice Setup</h3>
+                    </div>
+                    <div className="card-body">
+                        <div className="mb-3">
+                            <label className="form-label">Select Stream</label>
+                            <select className="form-select" value={selectedStream} onChange={(e) => setSelectedStream(e.target.value)}>
+                                {Object.keys(streamData).map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </div>
+                        <div className="mb-3">
+                            <label className="form-label">Select Category</label>
+                            <select className="form-select" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
+                                <option value="%">Mixed</option>
+                                {streamData[selectedStream]?.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        </div>
+                        <div className="mb-3">
+                            <label className="form-label">Difficulty</label>
+                            <select className="form-select" value={selectedDifficulty} onChange={(e) => setSelectedDifficulty(e.target.value)}>
+                                <option value="Easy">Easy</option>
+                                <option value="Medium">Medium</option>
+                                <option value="Hard">Hard</option>
+                            </select>
+                        </div>
+                        <div className="mb-3">
+                            <label className="form-label">Number of Questions</label>
+                            <input type="number" className="form-control" value={selectedCount} onChange={e => setSelectedCount(e.target.value)} min="5" max="50" />
+                        </div>
+                        <div className="d-grid">
+                            <button className="btn btn-success btn-lg" onClick={startPractice}>Start Practice</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     if (loading) return <div className="text-center mt-5"><h1>Loading Practice Questions...</h1></div>;
 
     if (finished) {
@@ -93,8 +149,8 @@ const Practice = () => {
         return (
             <div className="container mt-5 text-center">
                 <h3>No practice questions available.</h3>
-                <p>Please add some questions in the Question Manager first.</p>
-                <button className="btn btn-primary" onClick={() => navigate('/questions')}>Go to Question Manager</button>
+                <p>Try different settings or add some questions in the Question Manager.</p>
+                <button className="btn btn-primary" onClick={() => window.location.reload()}>Setup Again</button>
             </div>
         );
     }

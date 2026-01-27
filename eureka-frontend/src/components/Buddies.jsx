@@ -16,13 +16,6 @@ const Buddies = () => {
     // WebSocket Client
     const stompClientRef = useRef(null);
 
-    // Chat State
-    const [showChat, setShowChat] = useState(false);
-    const [chatFriend, setChatFriend] = useState(null);
-    const [messages, setMessages] = useState([]);
-    const [newMessage, setNewMessage] = useState("");
-    const chatSubscriptionRef = useRef(null);
-
     // Battle State
     const [showCreate, setShowCreate] = useState(false);
     const [selectedFriend, setSelectedFriend] = useState(null);
@@ -104,43 +97,18 @@ const Buddies = () => {
         stompClientRef.current = client;
     };
 
-    // Chat Logic
-    const openChat = (friend) => {
-        setChatFriend(friend);
-        setMessages([]); // Clear previous messages or fetch history if available
-        setShowChat(true);
-
-        if (stompClientRef.current) {
-            const roomId = [userName, friend.username].sort().join('_');
-            // Unsubscribe existing if any (edge case)
-            if (chatSubscriptionRef.current) chatSubscriptionRef.current.unsubscribe();
-
-            chatSubscriptionRef.current = stompClientRef.current.subscribe(`/all/chat/${roomId}`, (msg) => {
-                const body = JSON.parse(msg.body);
-                setMessages(prev => [...prev, body]);
+    // Poke Logic
+    const pokeUser = async (friend) => {
+        try {
+            await axios.post('http://localhost:8081/notifications/poke', {
+                sender: userName,
+                recipient: friend.username
             });
+            alert(`You poked ${friend.name}!`);
+        } catch (e) {
+            console.error(e);
+            alert("Failed to poke.");
         }
-    };
-
-    const closeChat = () => {
-        setShowChat(false);
-        setChatFriend(null);
-        if (chatSubscriptionRef.current) {
-            chatSubscriptionRef.current.unsubscribe();
-            chatSubscriptionRef.current = null;
-        }
-    };
-
-    const sendChatMessage = () => {
-        if (!newMessage.trim() || !stompClientRef.current || !chatFriend) return;
-        const roomId = [userName, chatFriend.username].sort().join('_');
-        const payload = {
-            sender: userName,
-            text: newMessage,
-            timestamp: new Date().toLocaleTimeString()
-        };
-        stompClientRef.current.send(`/app/chat/${roomId}`, {}, JSON.stringify(payload));
-        setNewMessage("");
     };
 
     // Battle Logic
@@ -177,6 +145,7 @@ const Buddies = () => {
                 onMessageReceived={onMessageReceived} // Header will call this
                 onGameJoined={onGameJoined} // Header will call this
                 onClientAvailable={onClientAvailable} // Header will pass client back
+                onPrivateMessage={() => { }} // Ignored in Buddies now
             />
 
             <div className="container mt-5">
@@ -211,8 +180,8 @@ const Buddies = () => {
                                                 <button className="btn btn-sm btn-danger" onClick={() => initiateBattle(friend)}>
                                                     Battle <i className="fa fa-skull"></i>
                                                 </button>
-                                                <button className="btn btn-sm btn-info text-white" onClick={() => openChat(friend)}>
-                                                    Message <i className="fa fa-comment"></i>
+                                                <button className="btn btn-sm btn-warning text-dark" onClick={() => pokeUser(friend)}>
+                                                    Poke <i className="fa fa-hand-point-right"></i>
                                                 </button>
                                             </div>
                                         </div>
@@ -283,44 +252,6 @@ const Buddies = () => {
                             <div className="modal-footer">
                                 <button className="btn btn-secondary" onClick={() => setShowCreate(false)}>Cancel</button>
                                 <button className="btn btn-primary" onClick={sendInvite}>Send Invite</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Chat Modal */}
-            {showChat && (
-                <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                    <div className="modal-dialog modal-dialog-scrollable">
-                        <div className="modal-content">
-                            <div className="modal-header bg-primary text-white">
-                                <h5 className="modal-title">Chat with {chatFriend?.name}</h5>
-                                <button className="btn-close btn-close-white" onClick={closeChat}></button>
-                            </div>
-                            <div className="modal-body" style={{ height: '300px', overflowY: 'auto' }}>
-                                {messages.map((msg, idx) => (
-                                    <div key={idx} className={`d-flex mb-2 ${msg.sender === userName ? 'justify-content-end' : 'justify-content-start'}`}>
-                                        <div className={`p-2 rounded ${msg.sender === userName ? 'bg-primary text-white' : 'bg-light border'}`} style={{ maxWidth: '75%' }}>
-                                            <small className="d-block mb-1" style={{ fontSize: '0.7em', opacity: 0.8 }}>{msg.sender}</small>
-                                            {msg.text}
-                                        </div>
-                                    </div>
-                                ))}
-                                {messages.length === 0 && <p className="text-center text-muted mt-5">Start the conversation!</p>}
-                            </div>
-                            <div className="modal-footer">
-                                <div className="input-group">
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        placeholder="Type a message..."
-                                        value={newMessage}
-                                        onChange={e => setNewMessage(e.target.value)}
-                                        onKeyPress={e => e.key === 'Enter' && sendChatMessage()}
-                                    />
-                                    <button className="btn btn-primary" onClick={sendChatMessage}>Send</button>
-                                </div>
                             </div>
                         </div>
                     </div>
