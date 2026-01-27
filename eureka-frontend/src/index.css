@@ -1,11 +1,57 @@
-body {
-  margin: 0;
-  font-family: Roboto, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-dark-academia-charcoal text-white font-sans;
+    /* Using relative path for webpack resolution */
+    background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.8)), url('./img/bg-dark-academia.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    min-height: 100vh;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-serif text-dark-academia-gold;
+  }
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+@layer components {
+
+  /* Glassmorphism Card Utils */
+  .glass-panel {
+    @apply bg-dark-academia-vellum backdrop-blur-md border border-white/10 shadow-glass rounded-lg;
+  }
+
+  .glass-panel-heavy {
+    @apply bg-black/40 backdrop-blur-lg border border-dark-academia-gold/30 shadow-glass rounded-xl;
+  }
+
+  /* Textures */
+  .vellum-overlay {
+    background-image: url('./img/bg-vellum.png');
+    background-blend-mode: overlay;
+    opacity: 0.1;
+    /* Subtle texture */
+    @apply absolute inset-0 pointer-events-none;
+  }
+
+  /* Buttons */
+  .btn-gold {
+    @apply bg-dark-academia-gold text-black font-serif font-bold uppercase tracking-widest px-6 py-2 rounded-sm border border-transparent hover:bg-yellow-600 hover:text-white transition-all duration-300 shadow-gold-glow;
+  }
+
+  .btn-glass {
+    @apply bg-white/5 text-white border border-white/20 hover:bg-white/10 hover:border-dark-academia-gold/50 transition-all duration-300;
+  }
 }

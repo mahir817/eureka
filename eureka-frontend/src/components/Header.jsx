@@ -1,21 +1,22 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
-import { Dropdown, Badge, Modal, Button, Form } from 'react-bootstrap';
+import { Dropdown } from 'react-bootstrap';
 import WebSocketComponent from "./WebSocketComponent";
 
 const UserHeader = (props) => {
     const [user, setUser] = useState({});
-    const navigate = useNavigate();
-    const location = useLocation();
+    const navigate = useNavigate(); // eslint-disable-line
+    const location = useLocation(); // eslint-disable-line
     const userName = props.userName;
     const notifications = props.notifications || [];
     const setNotifications = props.setNotifications;
     const stompClientRef = useRef(null);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     useEffect(() => {
         if (!userName) navigate('/login', { replace: true });
-    }, []);
+    }, [userName, navigate]);
 
     // Load initial notifications from DB
     useEffect(() => {
@@ -33,7 +34,7 @@ const UserHeader = (props) => {
                 })
                 .catch(e => console.error("Failed to load notifications", e));
         }
-    }, [userName]);
+    }, [userName, setNotifications]);
 
     const joinBuzzer = (code, notifId) => {
         const join = async () => {
@@ -89,106 +90,163 @@ const UserHeader = (props) => {
                 />
             )}
 
-            <div className="container-fluid bg-dark px-0">
-                <div className="row gx-0">
-                    <div className="col-lg-3 bg-dark d-none d-lg-block">
-                        <a onClick={() => navigate('/home', { state: { userName: userName } })} className="navbar-brand w-100 h-100 m-0 p-0 d-flex align-items-center justify-content-center" style={{ cursor: 'pointer' }}>
-                            <h1 className="m-0 text-primary text-uppercase">Eureka</h1>
-                        </a>
+            <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-dark-academia-charcoal/90 border-b border-dark-academia-gold/30 shadow-lg">
+                <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+
+                    {/* Brand */}
+                    <div
+                        onClick={() => navigate('/home', { state: { userName: userName } })}
+                        className="cursor-pointer flex items-center group"
+                    >
+                        <div className="w-10 h-10 border-2 border-dark-academia-gold rounded-full flex items-center justify-center mr-3 group-hover:bg-dark-academia-gold/20 transition-all duration-500">
+                            <i className="fa fa-graduation-cap text-dark-academia-gold text-lg"></i>
+                        </div>
+                        <h1 className="font-serif text-2xl md:text-3xl font-bold text-dark-academia-gold tracking-widest uppercase m-0 group-hover:text-white transition-colors duration-300">
+                            Eureka
+                        </h1>
                     </div>
-                    <div className="col-lg-9">
-                        <nav className="navbar navbar-expand-lg bg-dark navbar-dark p-3 p-lg-0">
-                            <a onClick={() => navigate('/home', { state: { userName: userName } })} className="navbar-brand d-block d-lg-none" style={{ cursor: 'pointer' }}>
-                                <h1 className="m-0 text-primary text-uppercase">Eureka</h1>
+
+                    {/* Navigation Desktop */}
+                    <nav className="hidden lg:flex space-x-8">
+                        {['Home', 'Practice', 'Buddies', 'Leaderboard', 'Streams'].map((item) => (
+                            <a
+                                key={item}
+                                onClick={() => navigate(`/${item.toLowerCase()}`, { state: { userName: userName } })}
+                                className="text-gray-400 hover:text-dark-academia-gold font-sans text-sm font-semibold tracking-widest uppercase cursor-pointer transition-all duration-300 relative group"
+                            >
+                                {item}
+                                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-dark-academia-gold transition-all duration-300 group-hover:w-full"></span>
                             </a>
-                            <button type="button" className="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbarCollapse">
-                                <span className="navbar-toggler-icon"></span>
-                            </button>
-                            <div className="collapse navbar-collapse justify-content-between" id="navbarCollapse">
-                                <div className="navbar-nav mr-auto py-0">
-                                    <a className="nav-item nav-link" style={{ cursor: 'pointer' }} onClick={() => navigate('/home', { state: { userName: userName } })}>Home</a>
-                                    <a className="nav-item nav-link" style={{ cursor: 'pointer' }} onClick={() => navigate('/practice', { state: { userName: userName } })}>Practice</a>
-                                    <a className="nav-item nav-link" style={{ cursor: 'pointer' }} onClick={() => navigate('/buddies', { state: { userName: userName } })}>Buddies</a>
-                                    <a className="nav-item nav-link" style={{ cursor: 'pointer' }} onClick={() => navigate('/leaderboard', { state: { userName: userName } })}>Leaderboard</a>
-                                    <a className="nav-item nav-link" style={{ cursor: 'pointer' }} onClick={() => navigate('/streams', { state: { userName: userName } })}>Streams</a>
-                                </div>
-                                <div className="d-flex align-items-center">
+                        ))}
+                    </nav>
 
-                                    {/* Notifications Dropdown */}
-                                    <Dropdown className="me-3">
-                                        <Dropdown.Toggle variant="secondary" id="dropdown-notif" className="position-relative">
-                                            <i className="fa fa-bell"></i>
-                                            {notifications.length > 0 && (
-                                                <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                                                    {notifications.length}
-                                                </span>
-                                            )}
-                                        </Dropdown.Toggle>
+                    {/* Right Actions */}
+                    <div className="flex items-center space-x-4">
 
-                                        <Dropdown.Menu align="end" style={{ minWidth: '300px', maxHeight: '400px', overflowY: 'auto' }}>
-                                            {notifications.length === 0 ? (
-                                                <Dropdown.Item disabled>No new notifications</Dropdown.Item>
-                                            ) : (
-                                                notifications.map(notif => (
-                                                    <div key={notif.id} className="p-2 border-bottom">
-                                                        {notif.type === 'POKE' ? (
-                                                            <div>
-                                                                <small className="fw-bold text-warning"><i className="fa fa-hand-point-right"></i> Poke!</small>
-                                                                <div className="text-muted small">{notif.text}</div>
-                                                            </div>
-                                                        ) : notif.type === 'WAITING' ? (
-                                                            <div className="small text-muted">{notif.text}</div>
-                                                        ) : (
-                                                            <div>
-                                                                <small>
-                                                                    <b>{notif.data?.player1 || 'Someone'}</b><br />
-                                                                    has started a buzzer round.<br />
-                                                                </small>
-                                                                {notif.data?.secretCode && (
-                                                                    <button
-                                                                        className="btn btn-sm btn-primary w-100 mt-1"
-                                                                        onClick={() => joinBuzzer(notif.data.secretCode, notif.id)}
-                                                                    >
-                                                                        Join
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                        )}
+                        {/* Notifications */}
+                        <Dropdown>
+                            <Dropdown.Toggle
+                                as="div"
+                                className="cursor-pointer relative text-dark-academia-gold hover:text-white transition-colors p-2"
+                                id="dropdown-notif"
+                            >
+                                <i className="fa fa-bell text-xl"></i>
+                                {notifications.length > 0 && (
+                                    <span className="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                                        {notifications.length}
+                                    </span>
+                                )}
+                            </Dropdown.Toggle>
+
+                            <Dropdown.Menu align="end" className="bg-dark-academia-midnight border border-dark-academia-gold/30 shadow-glass rounded-lg mt-2 min-w-[320px] max-h-[400px] overflow-y-auto">
+                                <div className="px-4 py-2 border-b border-white/10 text-dark-academia-gold font-serif text-sm">Notifications</div>
+                                {notifications.length === 0 ? (
+                                    <Dropdown.Item disabled className="text-gray-500 italic text-sm">No new missives</Dropdown.Item>
+                                ) : (
+                                    notifications.map(notif => (
+                                        <div key={notif.id} className="px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors">
+                                            {notif.type === 'POKE' ? (
+                                                <div>
+                                                    <div className="flex items-center text-dark-academia-gold mb-1">
+                                                        <i className="fa fa-hand-point-right mr-2"></i>
+                                                        <span className="font-bold text-sm">Challenged!</span>
                                                     </div>
-                                                ))
+                                                    <div className="text-gray-300 text-xs font-sans leading-relaxed">{notif.text}</div>
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <span className="font-bold text-gray-200 text-sm">{notif.data?.player1 || 'Opponent'}</span>
+                                                        <span className="text-xs text-dark-academia-gold/70">Buzzer</span>
+                                                    </div>
+                                                    <div className="text-gray-400 text-xs mb-2">Has initiated a duel.</div>
+                                                    {notif.data?.secretCode && (
+                                                        <button
+                                                            className="w-full py-1 bg-dark-academia-gold/90 hover:bg-dark-academia-gold text-black text-xs font-bold uppercase tracking-wider rounded transition-colors"
+                                                            onClick={() => joinBuzzer(notif.data.secretCode, notif.id)}
+                                                        >
+                                                            Accept Duel
+                                                        </button>
+                                                    )}
+                                                </div>
                                             )}
-                                        </Dropdown.Menu>
-                                    </Dropdown>
+                                        </div>
+                                    ))
+                                )}
+                            </Dropdown.Menu>
+                        </Dropdown>
 
-                                    {/* User Dropdown */}
-                                    <Dropdown>
-                                        <Dropdown.Toggle variant="primary" id="dropdown-user">
-                                            <i className="fa fa-user me-2"></i> {userName}
-                                        </Dropdown.Toggle>
-
-                                        <Dropdown.Menu align="end">
-                                            <Dropdown.Item onClick={() => navigate('/profile', { state: { userName: userName } })}>
-                                                Profile
-                                            </Dropdown.Item>
-
-                                            {userName === 'mahir817' && (
-                                                <Dropdown.Item onClick={() => navigate('/questions', { state: { userName: userName } })}>
-                                                    Questions (Admin)
-                                                </Dropdown.Item>
-                                            )}
-
-                                            <Dropdown.Divider />
-                                            <Dropdown.Item onClick={() => window.location.href = '/login'} className="text-danger">
-                                                Logout
-                                            </Dropdown.Item>
-                                        </Dropdown.Menu>
-                                    </Dropdown>
+                        {/* User Profile */}
+                        <Dropdown>
+                            <Dropdown.Toggle
+                                as="div"
+                                className="cursor-pointer flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
+                                id="dropdown-user"
+                            >
+                                <div className="w-8 h-8 rounded-full border border-dark-academia-gold/50 flex items-center justify-center bg-white/5">
+                                    <i className="fa fa-user text-dark-academia-gold text-sm"></i>
                                 </div>
-                            </div>
-                        </nav>
+                                <span className="font-serif hidden md:inline-block">{userName}</span>
+                            </Dropdown.Toggle>
+
+                            <Dropdown.Menu align="end" className="bg-dark-academia-midnight border border-dark-academia-gold/30 shadow-glass rounded-lg mt-2 w-48">
+                                <Dropdown.Item
+                                    className="text-gray-300 hover:bg-white/10 hover:text-dark-academia-gold px-4 py-2 transition-colors"
+                                    onClick={() => navigate('/profile', { state: { userName: userName } })}
+                                >
+                                    <i className="fa fa-scroll mr-2 text-xs"></i> Profile
+                                </Dropdown.Item>
+
+                                {userName === 'mahir817' && (
+                                    <Dropdown.Item
+                                        className="text-gray-300 hover:bg-white/10 hover:text-dark-academia-gold px-4 py-2 transition-colors"
+                                        onClick={() => navigate('/questions', { state: { userName: userName } })}
+                                    >
+                                        <i className="fa fa-feather-alt mr-2 text-xs"></i> Admin
+                                    </Dropdown.Item>
+                                )}
+
+                                <div className="h-px bg-white/10 my-1"></div>
+
+                                <Dropdown.Item
+                                    className="text-red-400 hover:bg-red-900/20 hover:text-red-300 px-4 py-2 transition-colors"
+                                    onClick={() => window.location.href = '/login'}
+                                >
+                                    <i className="fa fa-sign-out-alt mr-2 text-xs"></i> Logout
+                                </Dropdown.Item>
+                            </Dropdown.Menu>
+                        </Dropdown>
+
+                        {/* Mobile Toggle */}
+                        <button
+                            className="lg:hidden text-dark-academia-gold text-xl focus:outline-none"
+                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        >
+                            <i className={`fa ${mobileMenuOpen ? 'fa-times' : 'fa-bars'}`}></i>
+                        </button>
                     </div>
                 </div>
-            </div>
+
+                {/* Mobile Menu */}
+                {mobileMenuOpen && (
+                    <div className="lg:hidden absolute top-full left-0 w-full bg-dark-academia-midnight/95 backdrop-blur-xl border-b border-dark-academia-gold/30 shadow-2xl z-40 animate-fade-in-down">
+                        <div className="container mx-auto px-4 py-6 flex flex-col space-y-4">
+                            {['Home', 'Practice', 'Buddies', 'Leaderboard', 'Streams'].map((item) => (
+                                <a
+                                    key={item}
+                                    onClick={() => {
+                                        navigate(`/${item.toLowerCase()}`, { state: { userName: userName } });
+                                        setMobileMenuOpen(false);
+                                    }}
+                                    className="text-gray-300 hover:text-dark-academia-gold font-sans text-lg font-bold tracking-widest uppercase cursor-pointer border-b border-white/5 pb-2"
+                                >
+                                    {item}
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </header>
         </>
     );
 }
