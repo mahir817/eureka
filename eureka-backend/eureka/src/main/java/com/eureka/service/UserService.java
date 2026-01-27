@@ -1,4 +1,5 @@
 package com.eureka.service;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -9,7 +10,6 @@ import com.eureka.exception.ResourceNotFoundException;
 import com.eureka.model.User;
 import com.eureka.repository.UserRepository;
 
-
 @Service
 public class UserService {
     private final UserRepository userRepository;
@@ -17,11 +17,11 @@ public class UserService {
     public UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
-    
+
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
-    
+
     public User createUser(User user) {
         String username = user.getUsername();
         if (userRepository.existsByUsername(username) > 0f) {
@@ -36,8 +36,7 @@ public class UserService {
         return userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
     }
-    
- 
+
     public User getUserByUsername(String username) {
         Optional<User> userOptional = userRepository.findByUsername(username);
         if (userOptional.isPresent()) {
@@ -46,7 +45,7 @@ public class UserService {
             throw new ResourceNotFoundException("User not found with username: " + username);
         }
     }
-    
+
     public User updateUser(Long id, User updatedUser) {
         User user = getUserById(id);
         user.setName(updatedUser.getName());
@@ -63,5 +62,11 @@ public class UserService {
         User user = getUserById(id);
         userRepository.delete(user);
     }
-}
 
+    public List<User> getLeaderboard() {
+        return userRepository
+                .findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC,
+                        "ratings"))
+                .stream().limit(50).collect(java.util.stream.Collectors.toList());
+    }
+}

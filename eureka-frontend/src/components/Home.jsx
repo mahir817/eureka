@@ -11,25 +11,38 @@ const Home = () => {
   const [user, setUser] = useState({});
   const userName = state?.userName;
 
-  const [showNotification, setShowNotification] = useState(false);
-  const [showCategories, setShowCategories] = useState(true);
+
+  const [notifications, setNotifications] = useState([]);
   const [quizRequest, setQuizRequest] = useState({});
   const [streamData, setStreamData] = useState({});
+
   const [secretCode, setSecretCode] = useState();
 
   const onMessageReceived = (message) => {
     if (message["player1"] == userName) {
-      setShowCategories(false);
+      const newNotif = {
+        id: Date.now(),
+        type: 'WAITING',
+        text: "Wait for opponent users to join! You can start another buzzer round if no one joins in 20 seconds",
+        timestamp: new Date()
+      };
+      setNotifications(prev => [newNotif, ...prev]);
       setTimeout(() => {
-        setShowCategories(true);
+        setNotifications(prev => prev.filter(n => n.id !== newNotif.id));
       }, 20000);
       return;
     }
-    setShowNotification(true);
-    setQuizRequest(message);
+
+    const newNotif = {
+      id: Date.now(),
+      type: 'INVITE',
+      data: message,
+      timestamp: new Date()
+    };
+    setNotifications(prev => [newNotif, ...prev]);
 
     setTimeout(() => {
-      setShowNotification(false);
+      setNotifications(prev => prev.filter(n => n.id !== newNotif.id));
     }, 20000);
   };
 
@@ -83,7 +96,7 @@ const Home = () => {
         />
       )}
 
-      <Header userName={userName} />
+      <Header userName={userName} notifications={notifications} setNotifications={setNotifications} />
 
       {/* user Details */}
       <div
@@ -112,41 +125,32 @@ const Home = () => {
 
       {/* user Details */}
 
-      {showNotification && (
-        <Notification notification={quizRequest} userName={userName} />
-      )}
-
-      {showCategories &&
-        <>
-          <div className="container-xxl py-5">
-            <div className="container">
-              <div className="text-center wow fadeInUp" data-wow-delay="0.2s">
-                <h6 className="section-title text-center text-primary text-uppercase">
-                  Start competing
-                </h6>
-                <h1 className="mb-2">
-                  Explore Our <span className="text-primary text-uppercase">Streams</span>
-                </h1>
-                <div className="d-flex mx-auto w-75 border mb-5 py-4 px-5">
-                  <input className="form-control py-2 w-70 text-center mx-auto" value={secretCode} onChange={(e) => setSecretCode(e.target.value)} placeholder="Enter your secret key here to join"></input>
-                  <div className="mx-3"></div>
-                  <button className="col-md-1 btn btn-primary w-25 text-center mx-auto" onClick={joinWithCode}>Join</button>
-                </div>
+      <>
+        <div className="container-xxl py-5">
+          <div className="container">
+            <div className="text-center wow fadeInUp" data-wow-delay="0.2s">
+              <h6 className="section-title text-center text-primary text-uppercase">
+                Start competing
+              </h6>
+              <h1 className="mb-2">
+                Explore Our <span className="text-primary text-uppercase">Streams</span>
+              </h1>
+              <div className="d-flex mx-auto w-75 border mb-5 py-4 px-5">
+                <input className="form-control py-2 w-70 text-center mx-auto" value={secretCode} onChange={(e) => setSecretCode(e.target.value)} placeholder="Enter your secret key here to join"></input>
+                <div className="mx-3"></div>
+                <button className="col-md-1 btn btn-primary w-25 text-center mx-auto" onClick={joinWithCode}>Join</button>
               </div>
-
-              <div className="row g-4" id="txtHint">
-                {Object.entries(streamData).map(([stream, categories]) => (
-                  <Category key={stream} stream={stream} categories={categories} userName={userName} />
-                ))}
-              </div>
-
             </div>
-          </div>
-        </>}
 
-      {!showCategories && <>
-        <h5 className="text-center">Wait for opponent users to join! You can start another buzzer round if no one joins in 20 seconds</h5>
-      </>}
+            <div className="row g-4" id="txtHint">
+              {Object.entries(streamData).map(([stream, categories]) => (
+                <Category key={stream} stream={stream} categories={categories} userName={userName} />
+              ))}
+            </div>
+
+          </div>
+        </div>
+      </>
 
     </>
   );

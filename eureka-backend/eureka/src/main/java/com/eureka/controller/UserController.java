@@ -1,4 +1,5 @@
 package com.eureka.controller;
+
 import java.util.*;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +31,7 @@ public class UserController {
         User user = userService.getUserById(userId);
         return new ResponseEntity<>(user, HttpStatus.OK);
     }
-    
+
     @GetMapping("username/{username}")
     public ResponseEntity<User> getUserByUserName(@PathVariable String username) {
         User user = userService.getUserByUsername(username);
@@ -57,7 +58,12 @@ public class UserController {
         userService.deleteUser(userId);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
-    
+
+    @GetMapping("/leaderboard")
+    public List<User> getLeaderboard() {
+        return userService.getLeaderboard();
+    }
+
     @GetMapping("/login")
     public ResponseEntity<String> login(@RequestParam String username, @RequestParam String password) {
         User user = userService.getUserByUsername(username);

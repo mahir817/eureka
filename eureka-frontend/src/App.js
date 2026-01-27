@@ -12,6 +12,10 @@ import Result from './components/Result';
 import Waiting from './components/Waiting';
 import QuestionManager from './components/QuestionManager';
 import Practice from './components/Practice';
+import Buddies from "./components/Buddies";
+import Leaderboard from "./components/Leaderboard";
+import Streams from "./components/Streams";
+import Profile from "./components/Profile";
 
 
 function App() {
@@ -31,6 +35,10 @@ function App() {
           <Route exact path="/result" element={<Result />} />
           <Route exact path="/questions" element={<QuestionManager />} />
           <Route exact path="/practice" element={<Practice />} />
+          <Route path="/buddies" element={<Buddies />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/streams" element={<Streams />} />
+          <Route path="/profile" element={<Profile />} />
         </Routes>
       </div>
     </Router>
